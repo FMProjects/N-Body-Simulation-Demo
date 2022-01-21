@@ -1,0 +1,39 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel NBodyMain
+
+struct Body
+{
+    float3 pos; //position
+    float3 vel; //velocity
+    float3 acc; //acceleration
+    float mass;
+};
+
+RWStructuredBuffer<Body> bodies;
+float DELTATIME; //time increment between simulation frames
+float distanceThreshold;
+int numBodies; //length of bodies array
+
+[numthreads(1024, 1, 1)]
+void NBodyMain(uint3 id : SV_DispatchThreadID)
+{
+    int index = id.x;
+    float3 totalForce = float3(0, 0, 0);
+ 
+    for (int i; i < numBodies; i++)
+    {
+        //if (i != index)//we dont compute gravity on self, this will result in division by zero
+        //{
+            //calculate magnitude and direction of force
+            float3 directionVector = bodies[i].pos - bodies[index].pos;
+            float distance = length(directionVector);
+            
+            if (distance > distanceThreshold)                
+                totalForce += bodies[i].mass * bodies[index].mass * normalize(directionVector) / (distance * distance);
+        //}
+    }
+ 
+    bodies[index].acc = totalForce / bodies[index].mass;
+    bodies[index].pos += DELTATIME * bodies[index].vel + 0.5f * DELTATIME * DELTATIME * bodies[index].acc;
+    bodies[index].vel += DELTATIME * bodies[index].acc;
+}
